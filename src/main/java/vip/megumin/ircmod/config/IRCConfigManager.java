@@ -28,12 +28,11 @@ public final class IRCConfigManager {
             try (Reader reader = Files.newBufferedReader(path)) {
                 IRCConfig config = GSON.fromJson(reader, IRCConfig.class);
                 if (config != null) {
-                    // Fill in defaults when new fields are missing in old configs.
                     if (config.prefix == null || config.prefix.isBlank()) {
                         config.prefix = "@";
                     }
                     if (config.openConfigKeyCode <= 0) {
-                        config.openConfigKeyCode = 74; // GLFW_KEY_J
+                        config.openConfigKeyCode = 74;
                     }
                     return config;
                 }

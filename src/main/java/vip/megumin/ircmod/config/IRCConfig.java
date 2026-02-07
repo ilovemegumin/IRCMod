@@ -8,7 +8,5 @@ public final class IRCConfig {
     public String prefix = "@";
     public boolean autoConnect = true;
     public int maxMessageLength = 150;
-
-    // GLFW key code. Default is J (GLFW_KEY_J = 74). Stored as int to avoid version-specific key classes.
     public int openConfigKeyCode = 74;
 }

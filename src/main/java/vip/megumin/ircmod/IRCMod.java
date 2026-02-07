@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import vip.megumin.ircmod.config.IRCConfig;
 
@@ -78,106 +79,83 @@ public class IRCMod implements ClientModInitializer {
             return;
         }
         try {
-            Object key = createInputKey(keyCode);
-            if (key != null) {
-                for (Method m : KeyBinding.class.getMethods()) {
-                    if (!m.getName().equals("setBoundKey") || m.getParameterCount() != 1) {
-                        continue;
-                    }
-                    Class<?> p = m.getParameterTypes()[0];
-                    if (p.isInstance(key)) {
-                        m.invoke(keyBinding, key);
-                        break;
-                    }
-                }
-            }
-            try {
-                Method update = KeyBinding.class.getMethod("updateKeysByCode");
-                update.invoke(null);
-            } catch (NoSuchMethodException ignored) {
-            }
+            keyBinding.setBoundKey(InputUtil.Type.KEYSYM.createFromCode(keyCode));
+            KeyBinding.updateKeysByCode();
         } catch (Throwable ignored) {
-        }
-    }
-
-    private static Object createInputKey(int keyCode) {
-        try {
-            Object type = InputUtil.Type.KEYSYM;
-            Method createFromCode = type.getClass().getMethod("createFromCode", int.class);
-            return createFromCode.invoke(type, keyCode);
-        } catch (Throwable ignored) {
-            return null;
         }
     }
 
     private static KeyBinding createKeyBinding(String translationKey, int keyCode) {
-        Object type = InputUtil.Type.KEYSYM;
-        Object categoryArg = CATEGORY_KEY;
-
-        try {
-            Class<?> categoryClass = Class.forName("net.minecraft.client.option.KeyBinding$Category");
-            Object id = createIdentifier("ircmod", "main");
-            if (id != null) {
-                categoryArg = categoryClass.getMethod("create", id.getClass()).invoke(null, id);
-            }
-        } catch (Throwable ignored) {
-            // fallback
-        }
+        InputUtil.Type type = InputUtil.Type.KEYSYM;
+        Identifier categoryId = Identifier.of("ircmod", "main");
 
         for (Constructor<?> ctor : KeyBinding.class.getConstructors()) {
             Class<?>[] p = ctor.getParameterTypes();
             try {
+                if (p.length == 5
+                        && p[0] == String.class
+                        && p[1] == InputUtil.Type.class
+                        && p[2] == int.class
+                        && p[4] == int.class) {
+                    Object categoryArg = createCategoryArg(p[3], categoryId);
+                    if (categoryArg != null) {
+                        return (KeyBinding) ctor.newInstance(translationKey, type, keyCode, categoryArg, 0);
+                    }
+                }
+
                 if (p.length == 4
                         && p[0] == String.class
-                        && p[1].getName().equals("net.minecraft.client.util.InputUtil$Type")
-                        && p[2] == int.class
-                        && p[3].isInstance(categoryArg)) {
-                    return (KeyBinding) ctor.newInstance(translationKey, type, keyCode, categoryArg);
+                        && p[1] == InputUtil.Type.class
+                        && p[2] == int.class) {
+                    Object categoryArg = createCategoryArg(p[3], categoryId);
+                    if (categoryArg != null) {
+                        return (KeyBinding) ctor.newInstance(translationKey, type, keyCode, categoryArg);
+                    }
                 }
-                if (p.length == 4
-                        && p[0] == String.class
-                        && p[1].getName().equals("net.minecraft.client.util.InputUtil$Type")
-                        && p[2] == int.class
-                        && p[3] == String.class) {
-                    return (KeyBinding) ctor.newInstance(translationKey, type, keyCode, CATEGORY_KEY);
-                }
+
                 if (p.length == 3
                         && p[0] == String.class
-                        && p[1] == int.class
-                        && p[2] == String.class) {
-                    return (KeyBinding) ctor.newInstance(translationKey, keyCode, CATEGORY_KEY);
+                        && p[1] == int.class) {
+                    Object categoryArg = createCategoryArg(p[2], categoryId);
+                    if (categoryArg != null) {
+                        return (KeyBinding) ctor.newInstance(translationKey, keyCode, categoryArg);
+                    }
                 }
             } catch (ReflectiveOperationException ignored) {
-                // try next
             }
         }
 
         throw new IllegalStateException("No compatible KeyBinding constructor found for this Minecraft version");
     }
 
-    private static Object createIdentifier(String namespace, String path) {
-        try {
-            Class<?> idClass = Class.forName("net.minecraft.util.Identifier");
-            try {
-                Method of = idClass.getMethod("of", String.class, String.class);
-                return of.invoke(null, namespace, path);
-            } catch (NoSuchMethodException ignored) {
-                // fallthrough
-            }
-
-            try {
-                Constructor<?> ctor = idClass.getDeclaredConstructor(String.class, String.class);
-                ctor.setAccessible(true);
-                return ctor.newInstance(namespace, path);
-            } catch (NoSuchMethodException ignored) {
-                // fallthrough
-            }
-
-            Constructor<?> ctor = idClass.getDeclaredConstructor(String.class);
-            ctor.setAccessible(true);
-            return ctor.newInstance(namespace + ":" + path);
-        } catch (Throwable ignored) {
-            return null;
+    private static Object createCategoryArg(Class<?> categoryParamType, Identifier id) {
+        if (categoryParamType == String.class) {
+            return CATEGORY_KEY;
         }
+
+        try {
+            Constructor<?> ctor = categoryParamType.getDeclaredConstructor(Identifier.class);
+            ctor.setAccessible(true);
+            return ctor.newInstance(id);
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            for (Method m : categoryParamType.getMethods()) {
+                if (!java.lang.reflect.Modifier.isStatic(m.getModifiers())) {
+                    continue;
+                }
+                if (m.getParameterCount() != 1 || m.getParameterTypes()[0] != Identifier.class) {
+                    continue;
+                }
+                if (!categoryParamType.isAssignableFrom(m.getReturnType())) {
+                    continue;
+                }
+                return m.invoke(null, id);
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return null;
     }
 }

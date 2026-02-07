@@ -17,7 +17,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class SocketChat implements WebSocket.Listener {
-    private static final Pattern NICK_SUFFIX = Pattern.compile("^(.*)\\((\\d+)\\)$");
+    private static final int MAX_NICK_LEN = 24;
+    private static final Pattern NICK_SUFFIX_PARENS = Pattern.compile("^(.*)\\((\\d+)\\)$");
+    private static final Pattern NICK_ALLOWED = Pattern.compile("^[A-Za-z0-9_]{1," + MAX_NICK_LEN + "}$");
 
     private final URI uri;
     private final String channel;
@@ -38,13 +40,14 @@ public final class SocketChat implements WebSocket.Listener {
     public SocketChat(String uri, String channel, String nick, String password) {
         this.uri = URI.create(Objects.requireNonNull(uri, "uri"));
         this.channel = Objects.requireNonNull(channel, "channel");
-        String initialNick = Objects.requireNonNull(nick, "nick").trim();
-        if (initialNick.isEmpty()) {
+        String initialNickRaw = Objects.requireNonNull(nick, "nick").trim();
+        if (initialNickRaw.isEmpty()) {
             throw new IllegalArgumentException("nick must not be blank");
         }
-        String parsedBase = initialNick;
+
+        String parsedBase = initialNickRaw;
         int parsedRetry = 0;
-        Matcher m = NICK_SUFFIX.matcher(initialNick);
+        Matcher m = NICK_SUFFIX_PARENS.matcher(initialNickRaw);
         if (m.matches()) {
             parsedBase = m.group(1).trim();
             try {
@@ -53,14 +56,14 @@ public final class SocketChat implements WebSocket.Listener {
                 parsedRetry = 0;
             }
             if (parsedBase.isEmpty()) {
-                parsedBase = initialNick;
+                parsedBase = initialNickRaw;
                 parsedRetry = 0;
             }
         }
 
-        this.baseNick = parsedBase;
+        this.baseNick = sanitizeNick(parsedBase);
         this.nickRetryCount = Math.max(0, parsedRetry);
-        this.currentNick = initialNick;
+        this.currentNick = buildNick(this.baseNick, this.nickRetryCount);
         this.password = password == null ? "" : password;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -220,7 +223,6 @@ public final class SocketChat implements WebSocket.Listener {
             case "warn" -> {
                 String text = getString(obj, "text");
                 if (text != null && handleNickInUse(text)) {
-                    // handled internally
                     return;
                 }
                 if (text != null) {
@@ -228,7 +230,6 @@ public final class SocketChat implements WebSocket.Listener {
                 }
             }
             case "onlineSet" -> {
-                // hack.chat sends this after a successful join
                 synchronized (joinLock) {
                     joined = true;
                 }
@@ -246,7 +247,6 @@ public final class SocketChat implements WebSocket.Listener {
                 }
             }
             default -> {
-                // ignore other packets
             }
         }
     }
@@ -279,7 +279,7 @@ public final class SocketChat implements WebSocket.Listener {
                 return true;
             }
             nickRetryCount++;
-            currentNick = baseNick + "(" + nickRetryCount + ")";
+            currentNick = buildNick(baseNick, nickRetryCount);
         }
 
         fireMessage(new SocketReceivedPacketEvent("info", "Nick already in use, trying " + currentNick));
@@ -289,7 +289,6 @@ public final class SocketChat implements WebSocket.Listener {
 
     private static boolean isNickInUseWarning(String warnText) {
         String t = warnText == null ? "" : warnText.toLowerCase();
-        // Keep this loose; server messages differ by deployment/version.
         return (t.contains("nick") || t.contains("name"))
                 && (t.contains("in use") || t.contains("already") || t.contains("taken") || t.contains("registered"));
     }
@@ -316,5 +315,51 @@ public final class SocketChat implements WebSocket.Listener {
         for (SocketChatListener listener : listeners) {
             listener.onError(error);
         }
+    }
+
+    private static String sanitizeNick(String nick) {
+        String raw = nick == null ? "" : nick.trim();
+        if (raw.isEmpty()) {
+            return "Player";
+        }
+        if (NICK_ALLOWED.matcher(raw).matches()) {
+            return raw;
+        }
+        StringBuilder sb = new StringBuilder(raw.length());
+        for (int i = 0; i < raw.length() && sb.length() < MAX_NICK_LEN; i++) {
+            char c = raw.charAt(i);
+            if ((c >= 'a' && c <= 'z')
+                    || (c >= 'A' && c <= 'Z')
+                    || (c >= '0' && c <= '9')
+                    || c == '_') {
+                sb.append(c);
+            }
+        }
+        if (sb.length() == 0) {
+            return "Player";
+        }
+        return sb.toString();
+    }
+
+    private static String buildNick(String baseNick, int retryCount) {
+        String base = sanitizeNick(baseNick);
+        if (retryCount <= 0) {
+            return base.length() > MAX_NICK_LEN ? base.substring(0, MAX_NICK_LEN) : base;
+        }
+        String suffix = "_" + retryCount;
+        int maxBaseLen = MAX_NICK_LEN - suffix.length();
+        if (maxBaseLen < 1) {
+            return ("P" + suffix).substring(0, MAX_NICK_LEN);
+        }
+        if (base.length() > maxBaseLen) {
+            base = base.substring(0, maxBaseLen);
+        }
+        if (base.isEmpty()) {
+            base = "Player";
+            if (base.length() > maxBaseLen) {
+                base = base.substring(0, maxBaseLen);
+            }
+        }
+        return base + suffix;
     }
 }
