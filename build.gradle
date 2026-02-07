@@ -1,0 +1,246 @@
+plugins {
+    id 'fabric-loom' version '1.15-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+def mcBuildDir = project.findProperty("mc_build_dir")
+if (mcBuildDir != null && mcBuildDir.toString().trim()) {
+    buildDir = file(mcBuildDir.toString().trim())
+}
+
+repositories {
+    // Add repositories to retrieve artifacts from in here.
+    // You should only use this when depending on other mods because
+    // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
+    // See https://docs.gradle.org/current/userguide/declaring_repositories.html
+    // for more information about repositories.
+}
+
+dependencies {
+    // To change the versions see the gradle.properties file
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // gson
+    implementation 'com.google.code.gson:gson:2.13.2'
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "minecraft_versions", project.minecraft_versions
+    inputs.property "loader_version", project.loader_version
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": project.minecraft_version,
+                "minecraft_versions": project.minecraft_versions,
+                "loader_version": project.loader_version
+    }
+}
+
+def targetJavaVersion = 21
+tasks.withType(JavaCompile).configureEach {
+    // ensure that the encoding is set to UTF-8, no matter what the system default is
+    // this fixes some edge cases with special characters not displaying correctly
+    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+    // If Javadoc is generated, this must be specified in that task too.
+    it.options.encoding = "UTF-8"
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        it.options.release.set(targetJavaVersion)
+    }
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
+}
+
+jar {
+    destinationDirectory.set(layout.buildDirectory.dir("devlibs"))
+    archiveFileName = "${project.archives_base_name}-${project.mod_version}-${project.minecraft_version}-dev.jar"
+    from("LICENSE") {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
+
+tasks.named("sourcesJar") {
+    destinationDirectory.set(layout.buildDirectory.dir("devlibs"))
+    archiveFileName = "${project.archives_base_name}-${project.mod_version}-${project.minecraft_version}-dev-sources.jar"
+}
+
+tasks.named("remapJar") {
+    // Always put final artifacts in the root build/libs even when using per-MC buildDir overrides.
+    destinationDirectory.set(layout.projectDirectory.dir("build/libs"))
+    archiveFileName = "${project.archives_base_name}-${project.mod_version}-${project.minecraft_version}.jar"
+}
+
+tasks.named("remapSourcesJar") {
+    destinationDirectory.set(layout.projectDirectory.dir("build/libs"))
+    archiveFileName = "${project.archives_base_name}-${project.mod_version}-${project.minecraft_version}-sources.jar"
+}
+
+String normalizeMcVer(String mcVer) {
+    return mcVer.replace('.', '_').replace('-', '_')
+}
+
+List<String> parseCsvProperty(Object value) {
+    if (value == null) return []
+    def s = value.toString().trim()
+    if (s.isEmpty()) return []
+    return s.split(",").collect { it.trim() }.findAll { !it.isEmpty() }
+}
+
+def allbuildVersions = parseCsvProperty(project.findProperty("allbuild_minecraft_versions"))
+def allbuildOutRoot = project.findProperty("allbuild_out_root")?.toString()?.trim()
+if (!allbuildOutRoot) {
+    allbuildOutRoot = "build/allbuild"
+}
+
+@groovy.transform.Field
+Map<String, List<String>> mavenVersionsCache = [:]
+
+List<String> getMavenVersions(String group, String artifact) {
+    String groupPath = group.replace('.', '/')
+    String url = "https://maven.fabricmc.net/${groupPath}/${artifact}/maven-metadata.xml"
+    def cached = mavenVersionsCache.get(url)
+    if (cached != null) {
+        return cached
+    }
+    String xml = new URL(url).getText("UTF-8")
+    def parsed = new groovy.xml.XmlSlurper(false, false).parseText(xml)
+    List<String> versions = parsed.versioning.versions.version.collect { it.text() }
+    mavenVersionsCache.put(url, versions)
+    return versions
+}
+
+String resolveLatestYarnMappings(String mcVer) {
+    def versions = getMavenVersions("net.fabricmc", "yarn")
+    def re = ~/^\Q${mcVer}\E\+build\.(\d+)$/
+    def matches = versions.findAll { it ==~ re }
+    return matches.isEmpty() ? null : matches.last()
+}
+
+String resolveLatestFabricApi(String mcVer) {
+    def versions = getMavenVersions("net.fabricmc.fabric-api", "fabric-api")
+    def matches = versions.findAll { it.endsWith("+${mcVer}") }
+    return matches.isEmpty() ? null : matches.last()
+}
+
+tasks.register("build_allHelp") {
+    group = "build"
+    description = "Prints configuration help for the build_all task."
+    doLast {
+        println("allbuild_minecraft_versions = " + (allbuildVersions.isEmpty() ? "<empty>" : allbuildVersions.join(", ")))
+        println("Optional overrides per MC version X.Y.Z in gradle.properties:")
+        println("  yarn_mappings_X_Y_Z=...")
+        println("  fabric_version_X_Y_Z=...")
+        println("Then run:")
+        println("  gradle build_X_Y_Z")
+        println("  gradle build_all")
+        println("Optional:")
+        println("  allbuild_out_root=build/allbuild")
+    }
+}
+
+tasks.register("build_all") {
+    group = "build"
+    description = "Builds jars for all MC versions listed in allbuild_minecraft_versions."
+    doFirst {
+        if (allbuildVersions.isEmpty()) {
+            throw new GradleException("allbuild_minecraft_versions is empty. See task build_allHelp.")
+        }
+    }
+}
+
+allbuildVersions.each { mcVer ->
+    def norm = normalizeMcVer(mcVer)
+    def yarnKey = "yarn_mappings_${norm}"
+    def fabricKey = "fabric_version_${norm}"
+
+    def t = tasks.register("build_${norm}", Exec) {
+        group = "build"
+        description = "Build jars for Minecraft ${mcVer}"
+        workingDir = projectDir
+
+        doFirst {
+            def yarnVal = project.findProperty(yarnKey)
+            if (yarnVal == null || yarnVal.toString().trim().isEmpty()) {
+                yarnVal = resolveLatestYarnMappings(mcVer)
+            } else {
+                yarnVal = yarnVal.toString().trim()
+            }
+
+            def fabricVal = project.findProperty(fabricKey)
+            if (fabricVal == null || fabricVal.toString().trim().isEmpty()) {
+                fabricVal = resolveLatestFabricApi(mcVer)
+            } else {
+                fabricVal = fabricVal.toString().trim()
+            }
+
+            def missing = []
+            if (yarnVal == null || yarnVal.toString().trim().isEmpty()) missing.add(yarnKey)
+            if (fabricVal == null || fabricVal.toString().trim().isEmpty()) missing.add(fabricKey)
+            if (!missing.isEmpty()) {
+                throw new GradleException(
+                        "Missing properties for MC ${mcVer}: " + missing.join(", ")
+                                + ". Either add them to gradle.properties or ensure network access so they can be auto-resolved."
+                )
+            }
+
+            commandLine(
+                    "cmd", "/c", "gradlew.bat",
+                    "build", "-x", "test",
+                    "-Pminecraft_version=${mcVer}",
+                    "-Pyarn_mappings=${yarnVal.toString().trim()}",
+                    "-Pfabric_version=${fabricVal.toString().trim()}",
+                    "-Pmc_build_dir=${allbuildOutRoot}/${mcVer}",
+            )
+        }
+    }
+
+    def prevTaskProvider = (project.ext.has("allbuildPrevTask") ? project.ext.allbuildPrevTask : null)
+    if (prevTaskProvider != null) {
+        t.configure { mustRunAfter(prevTaskProvider) }
+    }
+    project.ext.allbuildPrevTask = t
+
+    tasks.named("build_all").configure {
+        dependsOn(t)
+    }
+}
+
+// configure the maven publication
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
+
+    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+    repositories {
+        // Add repositories to publish to here.
+        // Notice: This block does NOT have the same function as the block in the top level.
+        // The repositories here will be used for publishing your artifact, not for
+        // retrieving dependencies.
+    }
+}

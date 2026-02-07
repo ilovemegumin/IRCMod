@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "ircmod",
+  "version": "${version}",
+  "name": "IRCMod",
+  "description": "global chat. prefix: @",
+  "authors": ["h_ypi"],
+  "contact": {
+    "sources": "https://github.com/ilovemegumin/IRCMod",
+    "issues": "https://github.com/ilovemegumin/IRCMod/issues"
+  },
+  "license": "MIT",
+  "icon": "icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "vip.megumin.ircmod.IRCMod"
+    ]
+  },
+  "mixins": [
+    "ircmod.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_versions}"
+  }
+}
