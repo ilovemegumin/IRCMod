@@ -246,8 +246,6 @@ public final class SocketChat implements WebSocket.Listener {
                     fireMessage(new SocketReceivedPacketEvent("info", nick + " left"));
                 }
             }
-            default -> {
-            }
         }
     }
 
