@@ -14,5 +14,4 @@ Jボタンを押してください
 
 
 ### 前提mod
-fabric loader
 fabric api
