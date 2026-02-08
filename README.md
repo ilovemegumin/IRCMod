@@ -9,5 +9,10 @@
 - Gradle > Build を選択
 - 完了
 
-### GUIの開きかた
+### GUIの開き方
 Jボタンを押してください
+
+
+### 前提mod
+fabric loader
+fabric api
