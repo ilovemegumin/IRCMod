@@ -1,4 +1,6 @@
 # IRCMod
+![]([https://img.shields.io/badge/:badgeContent](https://img.shields.io/github/downloads/ilovemegumin/IRCMod/total.svg))
+
 
 ### 解説
 このModはシンプルなIRCModで違うサーバー間でチャットを可能にします。
