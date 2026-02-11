@@ -1,5 +1,5 @@
 # IRCMod
-![]([https://img.shields.io/badge/:badgeContent](https://img.shields.io/github/downloads/ilovemegumin/IRCMod/total.svg))
+![](https://img.shields.io/github/downloads/ilovemegumin/IRCMod/total.svg)
 
 
 ### 解説
