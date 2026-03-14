@@ -1,5 +1,9 @@
 package vip.megumin.ircmod.socket;
 
+/**
+ * @author haipi
+ */
+
 public interface SocketChatListener {
     void onMessage(SocketReceivedPacketEvent event);
 

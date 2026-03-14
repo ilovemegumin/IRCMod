@@ -16,6 +16,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * @author haipi
+ */
+
 public final class SocketChat implements WebSocket.Listener {
     private static final int MAX_NICK_LEN = 24;
     private static final Pattern NICK_SUFFIX_PARENS = Pattern.compile("^(.*)\\((\\d+)\\)$");

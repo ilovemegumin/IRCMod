@@ -9,6 +9,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import net.fabricmc.loader.api.FabricLoader;
 
+/**
+ * @author haipi
+ */
+
 public final class IRCConfigManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String DIR_NAME = "irc";

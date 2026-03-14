@@ -1,5 +1,9 @@
 package vip.megumin.ircmod.config;
 
+/**
+ * @author haipi
+ */
+
 public final class IRCConfig {
     public String serverUrl = "wss://hack.chat/chat-ws";
     public String channel = "mc-irc-mod-2026";

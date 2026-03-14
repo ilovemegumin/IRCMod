@@ -1,13 +1,17 @@
 package vip.megumin.ircmod;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import vip.megumin.ircmod.config.IRCConfig;
 import vip.megumin.ircmod.config.IRCConfigManager;
 import vip.megumin.ircmod.socket.SocketChat;
 import vip.megumin.ircmod.socket.SocketChatListener;
 import vip.megumin.ircmod.socket.SocketReceivedPacketEvent;
+
+/**
+ * @author haipi
+ */
 
 public final class IRCClient {
     private static final Object LOCK = new Object();
@@ -83,9 +87,9 @@ public final class IRCClient {
                 sendSystemMessage("IRC config missing server URL or channel.");
                 return;
             }
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             String nick = config.nick == null || config.nick.isBlank()
-                    ? client.getSession().getUsername()
+                    ? client.getUser().getName()
                     : config.nick.trim();
             String password = config.password == null ? "" : config.password;
             chat = new SocketChat(serverUrl, channel, nick, password);
@@ -139,32 +143,32 @@ public final class IRCClient {
             return;
         }
         if ("info".equalsIgnoreCase(nick)) {
-            postText(Text.literal("[IRC] ").formatted(Formatting.DARK_AQUA)
-                    .append(Text.literal(text).formatted(Formatting.GRAY)));
+            postText(Component.literal("[IRC] ").withStyle(ChatFormatting.DARK_AQUA)
+                    .append(Component.literal(text).withStyle(ChatFormatting.GRAY)));
             return;
         }
         if ("warn".equalsIgnoreCase(nick)) {
-            postText(Text.literal("[IRC] ").formatted(Formatting.DARK_AQUA)
-                    .append(Text.literal(text).formatted(Formatting.RED)));
+            postText(Component.literal("[IRC] ").withStyle(ChatFormatting.DARK_AQUA)
+                    .append(Component.literal(text).withStyle(ChatFormatting.RED)));
             return;
         }
         String safeNick = nick == null || nick.isBlank() ? "?" : nick;
-        postText(Text.literal("[IRC] ").formatted(Formatting.DARK_AQUA)
-                .append(Text.literal("<" + safeNick + "> ").formatted(Formatting.GRAY))
-                .append(Text.literal(text).formatted(Formatting.WHITE)));
+        postText(Component.literal("[IRC] ").withStyle(ChatFormatting.DARK_AQUA)
+                .append(Component.literal("<" + safeNick + "> ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(text).withStyle(ChatFormatting.WHITE)));
     }
 
     private static void sendSystemMessage(String message) {
-        postText(Text.literal("[IRC] ").formatted(Formatting.DARK_AQUA)
-                .append(Text.literal(message).formatted(Formatting.GRAY)));
+        postText(Component.literal("[IRC] ").withStyle(ChatFormatting.DARK_AQUA)
+                .append(Component.literal(message).withStyle(ChatFormatting.GRAY)));
     }
 
-    private static void postText(Text text) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.inGameHud == null) {
+    private static void postText(Component text) {
+        Minecraft client = Minecraft.getInstance();
+        if (client == null || client.gui == null) {
             return;
         }
-        client.execute(() -> client.inGameHud.getChatHud().addMessage(text));
+        client.execute(() -> client.gui.getChat().addMessage(text));
     }
 
     private static void shutdown() {

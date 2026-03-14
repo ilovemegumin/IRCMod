@@ -20,6 +20,6 @@ fabric api
 
 
 ## TODOとこのmodの出どころ
-Mojang Mappingsに対応させて最新バージョンに更新する。
+~~Mojang Mappingsに対応させて最新バージョンに更新する。~~ 完了
 
 このModは自分が昔作ったModからIRC機能だけ抜き取って独立させたものです。

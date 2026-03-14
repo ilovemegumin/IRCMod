@@ -1,32 +1,36 @@
 package vip.megumin.ircmod;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 import vip.megumin.ircmod.config.IRCConfig;
 import vip.megumin.ircmod.config.IRCConfigManager;
 
+/**
+ * @author haipi
+ */
+
 public final class IRCConfigScreen extends Screen {
     private final Screen parent;
-    private TextFieldWidget serverField;
-    private TextFieldWidget channelField;
-    private TextFieldWidget nickField;
-    private TextFieldWidget passwordField;
-    private TextFieldWidget prefixField;
-    private TextFieldWidget maxLengthField;
-    private ButtonWidget rebindOpenKeyButton;
-    private ButtonWidget autoConnectButton;
-    private ButtonWidget connectButton;
+    private EditBox serverField;
+    private EditBox channelField;
+    private EditBox nickField;
+    private EditBox passwordField;
+    private EditBox prefixField;
+    private EditBox maxLengthField;
+    private Button rebindOpenKeyButton;
+    private Button autoConnectButton;
+    private Button connectButton;
 
     private boolean autoConnect;
     private boolean rebindingOpenKey;
     private int openKeyCode;
 
     public IRCConfigScreen(Screen parent) {
-        super(Text.of("IRC Config"));
+        super(Component.nullToEmpty("IRC Config"));
         this.parent = parent;
     }
 
@@ -42,102 +46,105 @@ public final class IRCConfigScreen extends Screen {
         int fieldHeight = 20;
         int spacing = 28;
 
-        serverField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Text.of("Server"));
-        serverField.setText(config.serverUrl);
-        addDrawableChild(serverField);
+        serverField = new EditBox(font, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Component.nullToEmpty("Server"));
+        serverField.setValue(config.serverUrl);
+        addRenderableWidget(serverField);
         y += spacing;
 
-        channelField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Text.of("Channel"));
-        channelField.setText(config.channel);
-        addDrawableChild(channelField);
+        channelField = new EditBox(font, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Component.nullToEmpty("Channel"));
+        channelField.setValue(config.channel);
+        addRenderableWidget(channelField);
         y += spacing;
 
-        nickField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Text.of("Nick"));
-        nickField.setText(config.nick == null ? "" : config.nick);
-        addDrawableChild(nickField);
+        nickField = new EditBox(font, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Component.nullToEmpty("Nick"));
+        nickField.setValue(config.nick == null ? "" : config.nick);
+        addRenderableWidget(nickField);
         y += spacing;
 
-        passwordField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Text.of("Password"));
-        passwordField.setText(config.password == null ? "" : config.password);
-        addDrawableChild(passwordField);
+        passwordField = new EditBox(font, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Component.nullToEmpty("Password"));
+        passwordField.setValue(config.password == null ? "" : config.password);
+        addRenderableWidget(passwordField);
         y += spacing;
 
-        prefixField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Text.of("Prefix"));
-        prefixField.setText(config.prefix == null ? "@" : config.prefix);
-        addDrawableChild(prefixField);
+        prefixField = new EditBox(font, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Component.nullToEmpty("Prefix"));
+        prefixField.setValue(config.prefix == null ? "@" : config.prefix);
+        addRenderableWidget(prefixField);
         y += spacing;
 
-        maxLengthField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Text.of("Max Length"));
-        maxLengthField.setText(Integer.toString(config.maxMessageLength));
-        addDrawableChild(maxLengthField);
+        maxLengthField = new EditBox(font, centerX - fieldWidth / 2, y, fieldWidth, fieldHeight, Component.nullToEmpty("Max Length"));
+        maxLengthField.setValue(Integer.toString(config.maxMessageLength));
+        addRenderableWidget(maxLengthField);
         y += spacing;
 
-        rebindOpenKeyButton = ButtonWidget.builder(openKeyLabel(), button -> {
+        rebindOpenKeyButton = Button.builder(openKeyLabel(), button -> {
             rebindingOpenKey = true;
-            button.setMessage(Text.of("Press a key... (ESC to cancel)"));
-        }).dimensions(centerX - fieldWidth / 2, y, fieldWidth, 20).build();
-        addDrawableChild(rebindOpenKeyButton);
+            button.setMessage(Component.nullToEmpty("Press a key... (ESC to cancel)"));
+        }).bounds(centerX - fieldWidth / 2, y, fieldWidth, 20).build();
+        addRenderableWidget(rebindOpenKeyButton);
         y += spacing;
 
-        autoConnectButton = ButtonWidget.builder(autoConnectLabel(), button -> {
+        autoConnectButton = Button.builder(autoConnectLabel(), button -> {
             autoConnect = !autoConnect;
             button.setMessage(autoConnectLabel());
-        }).dimensions(centerX - fieldWidth / 2, y, fieldWidth, 20).build();
-        addDrawableChild(autoConnectButton);
+        }).bounds(centerX - fieldWidth / 2, y, fieldWidth, 20).build();
+        addRenderableWidget(autoConnectButton);
         y += spacing;
 
-        connectButton = ButtonWidget.builder(connectLabel(), button -> {
+        connectButton = Button.builder(connectLabel(), button -> {
             if (IRCClient.isConnected()) {
                 IRCClient.disconnect();
             } else {
                 IRCClient.connect();
             }
             button.setMessage(connectLabel());
-        }).dimensions(centerX - fieldWidth / 2, y, fieldWidth, 20).build();
-        addDrawableChild(connectButton);
+        }).bounds(centerX - fieldWidth / 2, y, fieldWidth, 20).build();
+        addRenderableWidget(connectButton);
         y += spacing + 4;
 
-        addDrawableChild(ButtonWidget.builder(Text.of("Save"), button -> {
+        addRenderableWidget(Button.builder(Component.nullToEmpty("Save"), button -> {
             IRCConfig updated = new IRCConfig();
-            updated.serverUrl = serverField.getText().trim();
-            updated.channel = channelField.getText().trim();
-            updated.nick = nickField.getText().trim();
-            updated.password = passwordField.getText();
-            updated.prefix = sanitizePrefix(prefixField.getText(), config.prefix);
+            updated.serverUrl = serverField.getValue().trim();
+            updated.channel = channelField.getValue().trim();
+            updated.nick = nickField.getValue().trim();
+            updated.password = passwordField.getValue();
+            updated.prefix = sanitizePrefix(prefixField.getValue(), config.prefix);
             updated.autoConnect = autoConnect;
-            updated.maxMessageLength = parseMaxLength(maxLengthField.getText(), config.maxMessageLength);
+            updated.maxMessageLength = parseMaxLength(maxLengthField.getValue(), config.maxMessageLength);
             updated.openConfigKeyCode = openKeyCode;
             IRCClient.applyConfig(updated);
-            close();
-        }).dimensions(centerX - fieldWidth / 2, y, (fieldWidth - 10) / 2, 20).build());
+            onClose();
+        }).bounds(centerX - fieldWidth / 2, y, (fieldWidth - 10) / 2, 20).build());
 
-        addDrawableChild(ButtonWidget.builder(Text.of("Cancel"), button -> close())
-                .dimensions(centerX + 5, y, (fieldWidth - 10) / 2, 20)
+        addRenderableWidget(Button.builder(Component.nullToEmpty("Cancel"), button -> onClose())
+                .bounds(centerX + 5, y, (fieldWidth - 10) / 2, 20)
                 .build());
 
         super.init();
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         renderBackground(context, mouseX, mouseY, delta);
-        context.drawTextWithShadow(textRenderer, "Server URL", serverField.getX(), serverField.getY() - 10, 0xFFFFFF);
-        context.drawTextWithShadow(textRenderer, "Channel", channelField.getX(), channelField.getY() - 10, 0xFFFFFF);
-        context.drawTextWithShadow(textRenderer, "Nick (blank = session)", nickField.getX(), nickField.getY() - 10, 0xFFFFFF);
-        context.drawTextWithShadow(textRenderer, "Password", passwordField.getX(), passwordField.getY() - 10, 0xFFFFFF);
-        context.drawTextWithShadow(textRenderer, "Prefix (global chat)", prefixField.getX(), prefixField.getY() - 10, 0xFFFFFF);
-        context.drawTextWithShadow(textRenderer, "Max Message Length", maxLengthField.getX(), maxLengthField.getY() - 10, 0xFFFFFF);
+        context.drawString(font, "Server URL", serverField.getX(), serverField.getY() - 10, 0xFFFFFF);
+        context.drawString(font, "Channel", channelField.getX(), channelField.getY() - 10, 0xFFFFFF);
+        context.drawString(font, "Nick (blank = session)", nickField.getX(), nickField.getY() - 10, 0xFFFFFF);
+        context.drawString(font, "Password", passwordField.getX(), passwordField.getY() - 10, 0xFFFFFF);
+        context.drawString(font, "Prefix (global chat)", prefixField.getX(), prefixField.getY() - 10, 0xFFFFFF);
+        context.drawString(font, "Max Message Length", maxLengthField.getX(), maxLengthField.getY() - 10, 0xFFFFFF);
         super.render(context, mouseX, mouseY, delta);
     }
 
     @Override
     public void tick() {
         super.tick();
-        if (!rebindingOpenKey || client == null || client.getWindow() == null) {
+        if (!rebindingOpenKey || minecraft == null || minecraft.getWindow() == null) {
             return;
         }
 
-        long window = client.getWindow().getHandle();
+        long window = IRCMod.getWindowHandle(minecraft.getWindow());
+        if (window == 0L) {
+            return;
+        }
 
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS) {
             rebindingOpenKey = false;
@@ -167,22 +174,22 @@ public final class IRCConfigScreen extends Screen {
     }
 
     @Override
-    public void close() {
-        client.setScreen(parent);
+    public void onClose() {
+        minecraft.setScreen(parent);
     }
 
-    private Text autoConnectLabel() {
-        return Text.of("Auto Connect: " + (autoConnect ? "ON" : "OFF"));
+    private Component autoConnectLabel() {
+        return Component.nullToEmpty("Auto Connect: " + (autoConnect ? "ON" : "OFF"));
     }
 
-    private Text connectLabel() {
-        return Text.of(IRCClient.isConnected() ? "Disconnect" : "Connect");
+    private Component connectLabel() {
+        return Component.nullToEmpty(IRCClient.isConnected() ? "Disconnect" : "Connect");
     }
 
-    private Text openKeyLabel() {
+    private Component openKeyLabel() {
         String name = GLFW.glfwGetKeyName(openKeyCode, 0);
         String shown = name == null || name.isBlank() ? Integer.toString(openKeyCode) : name.toUpperCase();
-        return Text.of("Open Config Key: " + shown);
+        return Component.nullToEmpty("Open Config Key: " + shown);
     }
 
     private int parseMaxLength(String input, int fallback) {
