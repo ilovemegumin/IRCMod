@@ -17,3 +17,9 @@ Jボタンを押してください
 
 ### 前提mod
 fabric api
+
+
+## TODOとこのmodの出どころ
+Mojang Mappingsに対応させて最新バージョンに更新する。
+
+このModは自分が昔作ったModからIRC機能だけ抜き取って独立させたものです。
