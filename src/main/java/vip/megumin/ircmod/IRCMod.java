@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
@@ -22,6 +23,7 @@ public class IRCMod implements ClientModInitializer {
     private static KeyMapping openConfigKey;
     private static int openConfigKeyCode = GLFW.GLFW_KEY_J;
     private static boolean openConfigKeyWasDown = false;
+    private static boolean firstRunMessageSent = false;
 
     @Override
     public void onInitializeClient() {
@@ -38,6 +40,10 @@ public class IRCMod implements ClientModInitializer {
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!firstRunMessageSent && IRCClient.isFirstRun() && client.player != null) {
+                IRCClient.sendSystemMessage("Press J to Settings UI");
+                firstRunMessageSent = true;
+            }
             boolean opened = false;
             while (openConfigKey.consumeClick()) {
                 opened = true;
@@ -47,6 +53,8 @@ public class IRCMod implements ClientModInitializer {
                 handleDirectOpenKey(client);
             }
         });
+
+        ClientSendMessageEvents.ALLOW_CHAT.register((message) -> !IRCClient.handleOutgoingMessage(message));
     }
 
     static int getOpenConfigKeyCode() {

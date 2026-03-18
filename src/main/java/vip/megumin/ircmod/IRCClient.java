@@ -17,12 +17,19 @@ public final class IRCClient {
     private static final Object LOCK = new Object();
     private static SocketChat chat;
     private static IRCConfig config;
+    private static boolean isFirstRun = false;
 
     private IRCClient() {
     }
 
+    public static boolean isFirstRun() {
+        return isFirstRun;
+    }
+
     public static void init() {
-        config = IRCConfigManager.load();
+        IRCConfigManager.Result result = IRCConfigManager.load();
+        config = result.config();
+        isFirstRun = result.isNew();
         if (config.autoConnect) {
             connect();
         }
@@ -76,7 +83,9 @@ public final class IRCClient {
     public static void connect() {
         synchronized (LOCK) {
             if (config == null) {
-                config = IRCConfigManager.load();
+                IRCConfigManager.Result result = IRCConfigManager.load();
+                config = result.config();
+                isFirstRun = result.isNew();
             }
             if (chat != null && chat.isConnected()) {
                 return;
@@ -158,7 +167,7 @@ public final class IRCClient {
                 .append(Component.literal(text).withStyle(ChatFormatting.WHITE)));
     }
 
-    private static void sendSystemMessage(String message) {
+    public static void sendSystemMessage(String message) {
         postText(Component.literal("[IRC] ").withStyle(ChatFormatting.DARK_AQUA)
                 .append(Component.literal(message).withStyle(ChatFormatting.GRAY)));
     }

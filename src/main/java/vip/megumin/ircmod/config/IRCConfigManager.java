@@ -25,10 +25,11 @@ public final class IRCConfigManager {
         return FabricLoader.getInstance().getConfigDir().resolve(DIR_NAME).resolve(FILE_NAME);
     }
 
-    public static IRCConfig load() {
+    public static Result load() {
         Path path = getPath();
         ensureDir(path);
-        if (Files.exists(path)) {
+        boolean isNew = !Files.exists(path);
+        if (!isNew) {
             try (Reader reader = Files.newBufferedReader(path)) {
                 IRCConfig config = GSON.fromJson(reader, IRCConfig.class);
                 if (config != null) {
@@ -38,15 +39,19 @@ public final class IRCConfigManager {
                     if (config.openConfigKeyCode <= 0) {
                         config.openConfigKeyCode = 74;
                     }
-                    return config;
+                    return new Result(config, false);
                 }
             } catch (IOException ignored) {
             }
         }
         IRCConfig config = new IRCConfig();
         save(config);
-        return config;
+        return new Result(config, true);
     }
+
+    public record Result(IRCConfig config, boolean isNew) {
+    }
+
 
     public static void save(IRCConfig config) {
         Path path = getPath();

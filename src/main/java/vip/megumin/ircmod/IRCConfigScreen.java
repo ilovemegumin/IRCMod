@@ -1,5 +1,6 @@
 package vip.megumin.ircmod;
 
+import java.lang.reflect.Method;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -124,7 +125,7 @@ public final class IRCConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        renderBackground(context, mouseX, mouseY, delta);
+        renderBackgroundCompat(context, mouseX, mouseY, delta);
         context.drawString(font, "Server URL", serverField.getX(), serverField.getY() - 10, 0xFFFFFF);
         context.drawString(font, "Channel", channelField.getX(), channelField.getY() - 10, 0xFFFFFF);
         context.drawString(font, "Nick (blank = session)", nickField.getX(), nickField.getY() - 10, 0xFFFFFF);
@@ -210,5 +211,20 @@ public final class IRCConfigScreen extends Screen {
             return fallback == null || fallback.isBlank() ? "@" : fallback;
         }
         return s;
+    }
+
+    private void renderBackgroundCompat(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        try {
+            Method modern = Screen.class.getMethod("renderBackground", GuiGraphics.class, int.class, int.class, float.class);
+            modern.invoke(this, context, mouseX, mouseY, delta);
+            return;
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            Method legacy = Screen.class.getMethod("renderBackground", GuiGraphics.class);
+            legacy.invoke(this, context);
+        } catch (Throwable ignored) {
+        }
     }
 }
