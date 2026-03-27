@@ -5,7 +5,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -34,7 +34,7 @@ public class IRCMod implements ClientModInitializer {
             openConfigKeyCode = cfg.openConfigKeyCode;
         }
 
-        openConfigKey = KeyBindingHelper.registerKeyBinding(createKeyBinding(
+        openConfigKey = KeyMappingHelper.registerKeyMapping(createKeyBinding(
                 "key.ircmod.open_config",
                 openConfigKeyCode
         ));

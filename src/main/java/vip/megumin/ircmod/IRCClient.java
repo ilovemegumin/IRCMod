@@ -177,7 +177,7 @@ public final class IRCClient {
         if (client == null || client.gui == null) {
             return;
         }
-        client.execute(() -> client.gui.getChat().addMessage(text));
+        client.execute(() -> client.gui.getChat().addClientSystemMessage(text));
     }
 
     private static void shutdown() {
