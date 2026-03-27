@@ -17,9 +17,6 @@
       "vip.megumin.ircmod.IRCMod"
     ]
   },
-  "mixins": [
-    "ircmod.mixins.json"
-  ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
